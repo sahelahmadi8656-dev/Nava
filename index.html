@@ -1373,6 +1373,33 @@ html, body {
 #messageInput{font-size:16px !important;}
 #groupChatInput{font-size:16px !important;}
 
+
+/* pwa-chat-kb-v2 */
+#usersPage.discover-page.is-open{
+  display:flex !important;
+  position:fixed !important;
+  inset:0 !important;
+  width:100% !important;
+  max-width:480px !important;
+  margin:0 auto !important;
+  height:100vh !important;
+  height:100dvh !important;
+  z-index:50 !important;
+  background:#fff !important;
+}
+.discover-public{flex:1;min-height:0;display:flex;flex-direction:column;}
+.discover-public-compose{
+  position:relative !important;
+  z-index:60 !important;
+  background:#fff !important;
+  flex-shrink:0 !important;
+  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)) !important;
+}
+#discoverChatInput,#messageInput,#groupChatInput{
+  font-size:16px !important; /* prevent iOS zoom */
+}
+#chatBox{display:flex;flex-direction:column;min-height:0;flex:1;}
+
 </style>
 </head>
 <body>
@@ -4467,48 +4494,69 @@ async function runHomeUserSearch() {
   const box = document.getElementById("homeSearchResults");
   const input = document.getElementById("homeUserSearch");
   if (!box || !input) return;
-  let q = (input.value || "").trim().toLowerCase().replace(/^@+/, "").replace(/ /g, "");
+  let q = String(input.value || "").trim().toLowerCase();
+  q = q.replace(/^@+/, "").replace(/\s+/g, "");
   if (q.length < 2) {
     box.classList.remove("show");
     box.innerHTML = "";
     return;
   }
-  await loadBlockedIds();
-  let { data, error } = await supabaseClient.from("profiles")
-    .select("id, username, display_name, avatar_url, bio, banned")
-    .eq("username", q)
-    .neq("id", currentUserId)
-    .limit(5);
-  if (error || !data || !data.length) {
-    const r2 = await supabaseClient.from("profiles")
+  try { await loadBlockedIds(); } catch (e) {}
+  let data = null;
+  let error = null;
+  // 1) exact username match
+  try {
+    const r1 = await supabaseClient.from("profiles")
       .select("id, username, display_name, avatar_url, bio, banned")
-      .ilike("username", q)
+      .eq("username", q)
       .neq("id", currentUserId)
-      .limit(5);
-    data = r2.data;
-    error = r2.error;
+      .limit(10);
+    data = r1.data;
+    error = r1.error;
+  } catch (e) { error = e; }
+  // 2) case-insensitive exact
+  if (error || !data || !data.length) {
+    try {
+      const r2 = await supabaseClient.from("profiles")
+        .select("id, username, display_name, avatar_url, bio, banned")
+        .ilike("username", q)
+        .neq("id", currentUserId)
+        .limit(10);
+      data = r2.data;
+      error = r2.error;
+    } catch (e) { error = e; }
+  }
+  // 3) partial contains (user code fragment)
+  if (error || !data || !data.length) {
+    try {
+      const r3 = await supabaseClient.from("profiles")
+        .select("id, username, display_name, avatar_url, bio, banned")
+        .ilike("username", "%" + q + "%")
+        .neq("id", currentUserId)
+        .limit(10);
+      data = r3.data;
+      error = r3.error;
+    } catch (e) { error = e; }
   }
   if (error) {
-    box.innerHTML = '<div class="empty-box">' + escapeHtml(error.message) + "</div>";
+    box.innerHTML = '<div class="empty-box">' + escapeHtml(error.message || String(error)) + "</div>";
     box.classList.add("show");
     return;
   }
   const list = (data || []).filter(u => {
-    if (blockedIds.includes(u.id) || u.banned === true) return false;
-    return String(u.username || "").toLowerCase() === q;
-  }).slice(0, 5);
+    if (!u || !u.id) return false;
+    if (String(u.id) === String(currentUserId)) return false;
+    if (typeof blockedIds !== "undefined" && blockedIds && blockedIds.includes(u.id)) return false;
+    if (u.banned === true || u.banned === "true") return false;
+    const un = String(u.username || "").toLowerCase().replace(/^@+/, "").trim();
+    if (!un) return false;
+    return un === q || un.indexOf(q) !== -1;
+  }).slice(0, 8);
   if (!list.length) {
-    box.innerHTML = '<div class="empty-box">' + t("no_users") + "</div>";
+    box.innerHTML = '<div class="empty-box">' + (t("no_users") || "User not found") + "</div>";
     box.classList.add("show");
     clearTimeout(_homeSearchHideTimer);
-    _homeSearchHideTimer = setTimeout(() => {
-      hideHomeSearchResults();
-      // clear input so empty state does not stick
-      try {
-        if (input && !(input.value || "").trim()) return;
-        // keep typed text, only hide panel
-      } catch (e) {}
-    }, 1800);
+    _homeSearchHideTimer = setTimeout(() => { try { hideHomeSearchResults(); } catch (e) {} }, 2000);
     return;
   }
   box.innerHTML = "";
@@ -4516,11 +4564,11 @@ async function runHomeUserSearch() {
     const row = document.createElement("div");
     row.className = "home-search-item";
     const name = escapeHtml(u.display_name || u.username || "—");
-    const uname = u.username ? "@" + escapeHtml(u.username) : "";
+    const uname = u.username ? "@" + escapeHtml(String(u.username).replace(/^@+/, "")) : "";
     row.innerHTML = (u.avatar_url
-      ? `<img src="${escapeHtml(u.avatar_url)}" alt="">`
-      : `<div class="ph">👤</div>`) +
-      `<div class="info"><div class="n">${name}</div><div class="u">${uname}</div></div>`;
+      ? '<img src="' + escapeHtml(u.avatar_url) + '" alt="">'
+      : '<div class="ph">👤</div>') +
+      '<div class="info"><div class="n">' + name + '</div><div class="u">' + uname + "</div></div>";
     row.onclick = () => {
       box.classList.remove("show");
       openProfileModal(u);
@@ -4529,6 +4577,7 @@ async function runHomeUserSearch() {
   });
   box.classList.add("show");
 }
+
 
 async function loadUsers() {
   const usersList = document.getElementById("usersList");
