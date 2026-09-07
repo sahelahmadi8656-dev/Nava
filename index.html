@@ -1434,9 +1434,9 @@ html, body {
         <p style="font-size:12px;color:#64748b;margin:8px 0 0;line-height:1.45" data-i18n="user_code_hint">پس از ثبت‌نام یک یوزرکد یکتا مثل @jcj98nn برای شما ساخته می‌شود.</p>
       </div>
       <label>ایمیل</label>
-      <input type="email" id="email" placeholder="example@email.com" required>
+      <input type="email" id="email" name="nava_login_email" placeholder="example@email.com" required autocomplete="username" inputmode="email">
       <label>رمز عبور</label>
-      <input type="password" id="password" placeholder="رمز عبور" required>
+      <input type="password" id="password" name="nava_login_password" placeholder="رمز عبور" required autocomplete="current-password">
       <div class="forgot-link" id="forgotLink"><span onclick="forgotPassword()">رمز عبور را فراموش کرده‌ام</span></div>
       <button class="login-btn" type="submit" id="authSubmitBtn">ورود</button>
     </form>
@@ -1470,7 +1470,7 @@ html, body {
       </div>
       <div class="home-search-wrap">
         <input type="text" id="homeUserSearch" data-i18n-placeholder="search_users" placeholder="🔍 @…"
-          oninput="onHomeUserSearch()" autocomplete="off">
+          oninput="onHomeUserSearch()" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" inputmode="search">
         <div id="homeSearchResults" class="home-search-results"></div>
       </div>
       <div class="menu">
@@ -1533,6 +1533,8 @@ html, body {
     <div class="discover-public-compose">
       <button type="button" class="dpc-emoji-btn" id="discoverEmojiBtn" onclick="toggleDiscoverStickerPanel()" title="Emoji">😊</button>
       <input type="text" id="discoverChatInput" data-i18n-placeholder="type_message" placeholder="Type a message..." maxlength="500"
+        autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true"
+        data-form-type="other" data-lpignore="true" data-1p-ignore="true" inputmode="text"
         oninput="updateDiscoverSendBtn()"
         onkeydown="if(event.key==='Enter'){event.preventDefault();sendDiscoverMessage();}">
       <button type="button" class="dpc-send-up" id="discoverSendBtn" onclick="sendDiscoverMessage()" disabled aria-label="send">↑</button>
@@ -1703,6 +1705,8 @@ html, body {
         <button type="button" class="voice-mic-btn" id="voiceMicGroup" title="Voice">🔊</button>
       </div>
       <input type="text" id="groupChatInput" data-i18n-placeholder="type_message" placeholder="Type a message..."
+        autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true"
+        data-form-type="other" data-lpignore="true" data-1p-ignore="true" inputmode="text"
         onkeydown="if(event.key==='Enter'){event.preventDefault();sendGroupMessage();}"
         oninput="syncGroupHeartVisibility()">
     </div>
@@ -1789,7 +1793,7 @@ html, body {
           <button type="button" class="attach-btn" onclick="document.getElementById('chatFileInput').click()" title="Attach">📎</button>
           <button type="button" class="voice-mic-btn" id="voiceMicPrivate" title="Voice">🔊</button>
         </div>
-        <input type="text" id="messageInput" placeholder="پیام بنویسید..." oninput="syncPrivateHeartVisibility()">
+        <input type="text" id="messageInput" placeholder="پیام بنویسید..." autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" data-form-type="other" data-lpignore="true" data-1p-ignore="true" inputmode="text" oninput="syncPrivateHeartVisibility()">
       </div>
       <button type="button" class="group-heart-btn" id="privateHeartBtn" title="❤️" aria-label="heart">❤️</button>
       <input type="file" id="chatFileInput" accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip" style="display:none" onchange="onChatFileSelected(event)">
@@ -2815,6 +2819,49 @@ function bindHomeMenuSounds() {
   bindUiClickSounds();
 }
 
+
+function disarmLoginAutofill() {
+  try {
+    const email = document.getElementById("email");
+    const pass = document.getElementById("password");
+    [email, pass].forEach((el) => {
+      if (!el) return;
+      try { el.blur(); } catch (e) {}
+      el.setAttribute("autocomplete", "off");
+      el.value = "";
+      el.readOnly = true;
+      el.disabled = true;
+      el.tabIndex = -1;
+      // prevent password managers from binding chat page to login form
+      el.setAttribute("data-lpignore", "true");
+      el.setAttribute("data-1p-ignore", "true");
+    });
+    const form = email && email.closest("form");
+    if (form) {
+      form.setAttribute("autocomplete", "off");
+    }
+  } catch (e) {}
+}
+function armLoginAutofill() {
+  try {
+    const email = document.getElementById("email");
+    const pass = document.getElementById("password");
+    if (email) {
+      email.readOnly = false;
+      email.disabled = false;
+      email.tabIndex = 0;
+      email.setAttribute("autocomplete", "username");
+    }
+    if (pass) {
+      pass.readOnly = false;
+      pass.disabled = false;
+      pass.tabIndex = 0;
+      pass.setAttribute("autocomplete", "current-password");
+    }
+  } catch (e) {}
+}
+
+
 function bindUiClickSounds() {
   if (window._uiClickSoundBound) return;
   window._uiClickSoundBound = true;
@@ -3111,6 +3158,7 @@ async function enterHomeAfterWelcome(user) {
   try { startBanWatchdog(); } catch (e) {}
   stopMessagesRealtime();
   loginPage.style.display = "none";
+  try { disarmLoginAutofill(); } catch (e) {}
   const wp = document.getElementById("welcomePage");
   if (wp) { wp.classList.remove("show"); wp.style.display = "none"; }
   [usersPage, friendRequestsPage, chatsPage, settingsPage].forEach(p => { if (p) p.style.display = "none"; });
@@ -5075,6 +5123,23 @@ function resetGroupChatLayout() {
 }
 
 
+
+function guardChatInputFocus() {
+  try {
+    const pass = document.getElementById("password");
+    const email = document.getElementById("email");
+    const pin = document.getElementById("adminPinInput");
+    [pass, email, pin, document.getElementById("newPassword"), document.getElementById("confirmPassword")].forEach((el) => {
+      if (!el) return;
+      try { el.blur(); } catch (e) {}
+      if (el.id === "password" || el.id === "email") {
+        el.readOnly = true;
+        el.disabled = true;
+      }
+    });
+  } catch (e) {}
+}
+
 function fitPublicChatToKeyboard() {
   const page = document.getElementById("usersPage");
   if (!page) return;
@@ -5143,18 +5208,21 @@ function bindChatKeyboardScroll() {
   const grp = document.getElementById("groupChatInput");
 
   const onFocusPriv = () => {
+    guardChatInputFocus();
     fitPrivateChatToKeyboard();
     setTimeout(fitPrivateChatToKeyboard, 50);
     setTimeout(fitPrivateChatToKeyboard, 280);
   };
   const onBlurPriv = () => setTimeout(() => { resetPrivateChatLayout(); scrollPrivateChatToEnd(false); }, 120);
   const onFocusPub = () => {
+    guardChatInputFocus();
     fitPublicChatToKeyboard();
     setTimeout(fitPublicChatToKeyboard, 50);
     setTimeout(fitPublicChatToKeyboard, 280);
   };
   const onBlurPub = () => setTimeout(() => { resetPublicChatLayout(); scrollPublicChatToEnd(false); }, 120);
   const onFocusGrp = () => {
+    guardChatInputFocus();
     fitGroupChatToKeyboard();
     setTimeout(fitGroupChatToKeyboard, 50);
     setTimeout(fitGroupChatToKeyboard, 250);
