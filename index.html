@@ -2822,41 +2822,97 @@ function bindHomeMenuSounds() {
 
 function disarmLoginAutofill() {
   try {
-    const email = document.getElementById("email");
-    const pass = document.getElementById("password");
-    [email, pass].forEach((el) => {
-      if (!el) return;
+    const loginPage = document.getElementById("loginPage");
+    if (loginPage) {
+      loginPage.style.display = "none";
+      loginPage.setAttribute("inert", "");
+      loginPage.setAttribute("aria-hidden", "true");
+    }
+    // ALL password fields in the document trigger Chrome's bar — neutralize them while in-app
+    document.querySelectorAll('input[type="password"]').forEach((el) => {
       try { el.blur(); } catch (e) {}
-      el.setAttribute("autocomplete", "off");
+      el.setAttribute("data-nava-was-password", "1");
+      el.type = "text"; // critical: type=password makes Chrome show the key bar
       el.value = "";
       el.readOnly = true;
       el.disabled = true;
       el.tabIndex = -1;
-      // prevent password managers from binding chat page to login form
+      el.removeAttribute("name");
+      el.setAttribute("autocomplete", "off");
       el.setAttribute("data-lpignore", "true");
       el.setAttribute("data-1p-ignore", "true");
+      el.style.display = "none";
     });
-    const form = email && email.closest("form");
-    if (form) {
-      form.setAttribute("autocomplete", "off");
+    const email = document.getElementById("email");
+    if (email) {
+      try { email.blur(); } catch (e) {}
+      email.type = "text";
+      email.value = "";
+      email.readOnly = true;
+      email.disabled = true;
+      email.tabIndex = -1;
+      email.removeAttribute("name");
+      email.setAttribute("autocomplete", "off");
+      email.style.display = "none";
     }
+    document.querySelectorAll("#loginPage input, #loginPage form").forEach((el) => {
+      el.setAttribute("autocomplete", "off");
+    });
   } catch (e) {}
 }
 function armLoginAutofill() {
   try {
-    const email = document.getElementById("email");
+    const loginPage = document.getElementById("loginPage");
+    if (loginPage) {
+      loginPage.removeAttribute("inert");
+      loginPage.removeAttribute("aria-hidden");
+    }
+    document.querySelectorAll('input[data-nava-was-password="1"]').forEach((el) => {
+      if (true) {
+        el.type = "password";
+        el.disabled = false;
+        el.readOnly = false;
+        el.tabIndex = 0;
+        el.style.display = "";
+        el.setAttribute("autocomplete", "current-password");
+      }
+    });
+    // restore by id (more reliable)
     const pass = document.getElementById("password");
+    if (pass) {
+      pass.type = "password";
+      pass.disabled = false;
+      pass.readOnly = false;
+      pass.tabIndex = 0;
+      pass.style.display = "";
+      pass.name = "nava_login_password";
+      pass.setAttribute("autocomplete", "current-password");
+    }
+    const email = document.getElementById("email");
     if (email) {
-      email.readOnly = false;
+      email.type = "email";
       email.disabled = false;
+      email.readOnly = false;
       email.tabIndex = 0;
+      email.style.display = "";
+      email.name = "nava_login_email";
       email.setAttribute("autocomplete", "username");
     }
-    if (pass) {
-      pass.readOnly = false;
-      pass.disabled = false;
-      pass.tabIndex = 0;
-      pass.setAttribute("autocomplete", "current-password");
+    const np = document.getElementById("newPassword");
+    const cp = document.getElementById("confirmPassword");
+    [np, cp].forEach((el) => {
+      if (!el) return;
+      el.type = "password";
+      el.disabled = false;
+      el.readOnly = false;
+      el.style.display = "";
+    });
+    const pin = document.getElementById("adminPinInput");
+    if (pin) {
+      pin.type = "password";
+      pin.disabled = false;
+      pin.readOnly = false;
+      pin.style.display = "";
     }
   } catch (e) {}
 }
@@ -3808,6 +3864,7 @@ async function togglePublicChatEnabled(on) {
 }
 
 async function showPublicChat() {
+  try { disarmLoginAutofill(); } catch (e) {}
   if (!requireNotBanned()) return;
   if (await enforceBanOrExit()) return;
   await fetchPublicChatEnabled();
@@ -5679,6 +5736,7 @@ let typingTimeout = null;
 let peerOnline = false;
 
 async function openChat(friend) {
+  try { disarmLoginAutofill(); } catch (e) {}
   [homePage, usersPage, friendRequestsPage, settingsPage].forEach(p => { if (p) p.style.display = "none"; });
   const bp = document.getElementById("blockedPage");
   if (bp) bp.style.display = "none";
@@ -8419,6 +8477,7 @@ async function refreshGroupInviteBadge() {
 }
 
 async function openGroupChat(groupId, groupName, createdBy) {
+  try { disarmLoginAutofill(); } catch (e) {}
   if (!groupId || !currentUserId) return;
   if (!requireNotBanned()) return;
   if (await enforceBanOrExit()) return;
