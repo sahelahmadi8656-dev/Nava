@@ -3137,10 +3137,21 @@ async function checkSession() {
 
 function showLogin() {
   stopMessagesRealtime();
+  try { currentUserId = null; } catch (e) {}
   [homePage, usersPage, friendRequestsPage, chatsPage, settingsPage].forEach(p => { if (p) p.style.display = "none"; });
+  try { hideAllMainPages(); } catch (e) {}
   const wp = document.getElementById("welcomePage");
   if (wp) { wp.classList.remove("show"); wp.style.display = "none"; }
-  loginPage.style.display = "flex";
+  const lp = document.getElementById("loginPage") || loginPage;
+  if (lp) {
+    lp.style.display = "flex";
+    lp.style.visibility = "visible";
+    lp.removeAttribute("inert");
+    lp.removeAttribute("aria-hidden");
+  }
+  try { armLoginAutofill(); } catch (e) {}
+  setTimeout(() => { try { armLoginAutofill(); } catch (e) {} }, 30);
+  setTimeout(() => { try { armLoginAutofill(); } catch (e) {} }, 200);
 }
 
 function needsWelcome(uid) {
@@ -9706,7 +9717,13 @@ async function logout() {
   const ap = document.getElementById("adminPage");
   if (ap) ap.style.display = "none";
   showLogin();
-  document.getElementById("password").value = "";
+  try { armLoginAutofill(); } catch (e) {}
+  try {
+    const pw = document.getElementById("password");
+    if (pw) { pw.value = ""; pw.type = "password"; pw.disabled = false; pw.style.display = ""; }
+    const em = document.getElementById("email");
+    if (em) { em.disabled = false; em.style.display = ""; }
+  } catch (e) {}
   showToast(t("logged_out"), "info");
 }
 
