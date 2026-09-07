@@ -1,4 +1,5 @@
-const CACHE = "nava-v1";
+/* Nava PWA service worker */
+const CACHE = "nava-v3";
 const PRECACHE = ["/", "/index.html", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -20,6 +21,7 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.hostname.includes("supabase.co")) return;
+  // Always network-first for HTML so updates apply
   if (req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html")) {
     event.respondWith(
       fetch(req)
@@ -33,13 +35,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
+    fetch(req)
+      .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy));
         return res;
-      }).catch(() => cached);
-    })
+      })
+      .catch(() => caches.match(req))
   );
 });
