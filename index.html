@@ -8,10 +8,11 @@
 <title>Nava</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Nava">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1356,6 +1357,21 @@ html, body {
   box-shadow:0 1px 4px rgba(239,68,68,.45);z-index:2;line-height:1;
 }
 .group-card.has-unread{border-color:#fecaca;background:#fff7f7}
+
+/* pwa-chat-fix */
+
+#usersPage.discover-page.is-open{
+  display:flex !important;
+  position:fixed;inset:0;width:100%;max-width:480px;margin:0 auto;
+  height:100vh;height:100dvh;z-index:30;background:#fff;
+}
+.discover-public-compose{
+  position:relative;z-index:40;background:#fff;
+  flex-shrink:0;
+}
+#discoverChatInput{font-size:16px !important;}
+#messageInput{font-size:16px !important;}
+#groupChatInput{font-size:16px !important;}
 
 </style>
 </head>
@@ -5009,6 +5025,66 @@ function resetGroupChatLayout() {
   scrollGroupChatToEnd(false);
 }
 
+
+function fitPublicChatToKeyboard() {
+  const page = document.getElementById("usersPage");
+  if (!page) return;
+  const open = page.classList.contains("is-open") || page.style.display === "flex";
+  if (!open) return;
+  const vv = window.visualViewport;
+  if (vv) {
+    page.style.height = Math.round(vv.height) + "px";
+    page.style.top = Math.round(vv.offsetTop) + "px";
+    page.style.bottom = "auto";
+    page.style.position = "fixed";
+  }
+  try { scrollPublicChatToEnd(true); } catch (e) {}
+}
+function resetPublicChatLayout() {
+  const page = document.getElementById("usersPage");
+  if (!page) return;
+  page.style.height = "";
+  page.style.top = "";
+  page.style.bottom = "";
+  // keep fixed while open for PWA stability
+  if (page.classList.contains("is-open")) {
+    page.style.position = "fixed";
+    page.style.height = "100dvh";
+    page.style.inset = "0";
+  }
+}
+function fitPrivateChatToKeyboard() {
+  const box = document.getElementById("chatBox");
+  const page = document.getElementById("chatsPage");
+  if (!box || !page) return;
+  if (page.style.display === "none") return;
+  if (box.style.display === "none") return;
+  const vv = window.visualViewport;
+  if (vv) {
+    page.style.height = Math.round(vv.height) + "px";
+    page.style.position = "fixed";
+    page.style.top = Math.round(vv.offsetTop) + "px";
+    page.style.left = "0";
+    page.style.right = "0";
+    page.style.bottom = "auto";
+    page.style.zIndex = "25";
+    page.style.background = "#fff";
+  }
+  try { scrollPrivateChatToEnd(true); } catch (e) {}
+}
+function resetPrivateChatLayout() {
+  const page = document.getElementById("chatsPage");
+  if (!page) return;
+  page.style.height = "";
+  page.style.top = "";
+  page.style.left = "";
+  page.style.right = "";
+  page.style.bottom = "";
+  page.style.position = "";
+  page.style.zIndex = "";
+}
+
+
 function bindChatKeyboardScroll() {
   if (window._pcKbBound) return;
   window._pcKbBound = true;
@@ -5017,10 +5093,18 @@ function bindChatKeyboardScroll() {
   const pub = document.getElementById("discoverChatInput");
   const grp = document.getElementById("groupChatInput");
 
-  const onFocusPriv = () => scrollPrivateChatToEnd(true);
-  const onBlurPriv = () => setTimeout(() => scrollPrivateChatToEnd(false), 100);
-  const onFocusPub = () => scrollPublicChatToEnd(true);
-  const onBlurPub = () => setTimeout(() => scrollPublicChatToEnd(false), 100);
+  const onFocusPriv = () => {
+    fitPrivateChatToKeyboard();
+    setTimeout(fitPrivateChatToKeyboard, 50);
+    setTimeout(fitPrivateChatToKeyboard, 280);
+  };
+  const onBlurPriv = () => setTimeout(() => { resetPrivateChatLayout(); scrollPrivateChatToEnd(false); }, 120);
+  const onFocusPub = () => {
+    fitPublicChatToKeyboard();
+    setTimeout(fitPublicChatToKeyboard, 50);
+    setTimeout(fitPublicChatToKeyboard, 280);
+  };
+  const onBlurPub = () => setTimeout(() => { resetPublicChatLayout(); scrollPublicChatToEnd(false); }, 120);
   const onFocusGrp = () => {
     fitGroupChatToKeyboard();
     setTimeout(fitGroupChatToKeyboard, 50);
@@ -5047,10 +5131,10 @@ function bindChatKeyboardScroll() {
     const groupPage = document.getElementById("groupChatPage");
     const active = document.activeElement;
     if (chatBox && chatBox.style.display !== "none" && active === priv) {
-      scrollPrivateChatToEnd(true);
+      fitPrivateChatToKeyboard();
     }
     if (usersPage && usersPage.classList.contains("is-open") && active === pub) {
-      scrollPublicChatToEnd(true);
+      fitPublicChatToKeyboard();
     }
     if (groupPage && (groupPage.classList.contains("is-open") || groupPage.style.display === "flex")) {
       if (active === grp) fitGroupChatToKeyboard();
@@ -7406,6 +7490,7 @@ let groupMsgChannel = null;
 let _memberSideMap = {}; // userId -> 0 left, 1 right
 
 function hideAllMainPages() {
+  try { hideHomeSearchResults(); } catch (e) {}
   const ids = ["homePage","usersPage","discoverPeoplePage","friendRequestsPage","friendsPage","momentsPage","createMomentPage","chatsPage","settingsPage","blockedPage","adminPage","supportPage","notificationsPage","settingsProfilePage","settingsSecurityPage","settingsPrivacyPage","groupsPage","createGroupPage","groupChatPage","loginPage","welcomePage"];
   ids.forEach(id => {
     const el = document.getElementById(id);
@@ -9850,6 +9935,8 @@ checkSession();
     <button type="button" id="adminPinBtn" onclick="submitAdminPin()">OK</button>
   </div>
 </div>
+
+
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
@@ -9859,5 +9946,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+
 </body>
 </html>
