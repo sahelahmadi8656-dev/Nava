@@ -1358,47 +1358,34 @@ html, body {
 }
 .group-card.has-unread{border-color:#fecaca;background:#fff7f7}
 
-/* pwa-chat-fix */
-
-#usersPage.discover-page.is-open{
-  display:flex !important;
-  position:fixed;inset:0;width:100%;max-width:480px;margin:0 auto;
-  height:100vh;height:100dvh;z-index:30;background:#fff;
-}
-.discover-public-compose{
-  position:relative;z-index:40;background:#fff;
+/* chat-compose-safe: no fixed full-page hacks */
+.discover-public-compose,
+.message-input-bar,
+.gpc-compose{
+  position:sticky;
+  bottom:0;
+  z-index:20;
+  background:#fff;
   flex-shrink:0;
-}
-#discoverChatInput{font-size:16px !important;}
-#messageInput{font-size:16px !important;}
-#groupChatInput{font-size:16px !important;}
-
-
-/* pwa-chat-kb-v2 */
-#usersPage.discover-page.is-open{
-  display:flex !important;
-  position:fixed !important;
-  inset:0 !important;
-  width:100% !important;
-  max-width:480px !important;
-  margin:0 auto !important;
-  height:100vh !important;
-  height:100dvh !important;
-  z-index:50 !important;
-  background:#fff !important;
-}
-.discover-public{flex:1;min-height:0;display:flex;flex-direction:column;}
-.discover-public-compose{
-  position:relative !important;
-  z-index:60 !important;
-  background:#fff !important;
-  flex-shrink:0 !important;
-  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)) !important;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));
 }
 #discoverChatInput,#messageInput,#groupChatInput{
-  font-size:16px !important; /* prevent iOS zoom */
+  font-size:16px !important;
 }
-#chatBox{display:flex;flex-direction:column;min-height:0;flex:1;}
+#usersPage.discover-page.is-open{
+  display:flex;
+  height:100vh;
+  height:100dvh;
+  flex-direction:column;
+  overflow:hidden;
+}
+#groupChatPage.is-open,
+#groupChatPage[style*="flex"]{
+  height:100vh;
+  height:100dvh;
+  overflow:hidden;
+}
+
 
 
 /* login-fields-force-visible */
@@ -5132,18 +5119,11 @@ function scrollGroupChatToEnd(force) {
 }
 
 function fitGroupChatToKeyboard() {
-  const page = document.getElementById("groupChatPage");
-  if (!page) return;
-  const open = page.classList.contains("is-open") || page.style.display === "flex";
-  if (!open) return;
-  const vv = window.visualViewport;
-  if (vv) {
-    // shrink page to visible area so composer + last msg sit above keyboard
-    page.style.height = Math.round(vv.height) + "px";
-    page.style.top = Math.round(vv.offsetTop) + "px";
-    page.style.bottom = "auto";
-  }
-  scrollGroupChatToEnd(true);
+  try {
+    const input = document.getElementById("groupChatInput");
+    if (input) input.scrollIntoView({ block: "end", behavior: "smooth" });
+  } catch (e) {}
+  try { scrollGroupChatToEnd(true); } catch (e) {}
 }
 
 function resetGroupChatLayout() {
@@ -5152,10 +5132,8 @@ function resetGroupChatLayout() {
   page.style.height = "";
   page.style.top = "";
   page.style.bottom = "";
-  scrollGroupChatToEnd(false);
+  page.style.position = "";
 }
-
-
 
 function guardChatInputFocus() {
   try {
@@ -5174,51 +5152,30 @@ function guardChatInputFocus() {
 }
 
 function fitPublicChatToKeyboard() {
-  const page = document.getElementById("usersPage");
-  if (!page) return;
-  const open = page.classList.contains("is-open") || page.style.display === "flex";
-  if (!open) return;
-  const vv = window.visualViewport;
-  if (vv) {
-    page.style.height = Math.round(vv.height) + "px";
-    page.style.top = Math.round(vv.offsetTop) + "px";
-    page.style.bottom = "auto";
-    page.style.position = "fixed";
-  }
+  try {
+    const input = document.getElementById("discoverChatInput");
+    if (input) input.scrollIntoView({ block: "end", behavior: "smooth" });
+  } catch (e) {}
   try { scrollPublicChatToEnd(true); } catch (e) {}
 }
+
 function resetPublicChatLayout() {
   const page = document.getElementById("usersPage");
   if (!page) return;
   page.style.height = "";
   page.style.top = "";
   page.style.bottom = "";
-  // keep fixed while open for PWA stability
-  if (page.classList.contains("is-open")) {
-    page.style.position = "fixed";
-    page.style.height = "100dvh";
-    page.style.inset = "0";
-  }
+  page.style.position = "";
 }
+
 function fitPrivateChatToKeyboard() {
-  const box = document.getElementById("chatBox");
-  const page = document.getElementById("chatsPage");
-  if (!box || !page) return;
-  if (page.style.display === "none") return;
-  if (box.style.display === "none") return;
-  const vv = window.visualViewport;
-  if (vv) {
-    page.style.height = Math.round(vv.height) + "px";
-    page.style.position = "fixed";
-    page.style.top = Math.round(vv.offsetTop) + "px";
-    page.style.left = "0";
-    page.style.right = "0";
-    page.style.bottom = "auto";
-    page.style.zIndex = "25";
-    page.style.background = "#fff";
-  }
+  try {
+    const input = document.getElementById("messageInput");
+    if (input) input.scrollIntoView({ block: "end", behavior: "smooth" });
+  } catch (e) {}
   try { scrollPrivateChatToEnd(true); } catch (e) {}
 }
+
 function resetPrivateChatLayout() {
   const page = document.getElementById("chatsPage");
   if (!page) return;
@@ -5230,7 +5187,6 @@ function resetPrivateChatLayout() {
   page.style.position = "";
   page.style.zIndex = "";
 }
-
 
 function bindChatKeyboardScroll() {
   if (window._pcKbBound) return;
@@ -10072,7 +10028,7 @@ checkSession();
 </script>
 
 <!-- Global reaction bar (must stay outside hidden pages) -->
-<div class="msg-reaction-bar" id="msgReactionBar"></div>
+<div class="msg-reaction-bar" id="msgReactionBar" style="display:none" aria-hidden="true"></div>
 <div id="deleteAccountModal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:16px;padding:20px 18px;max-width:340px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.2)">
     <div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:10px" data-i18n="delete_account_btn">حذف حساب</div>
