@@ -1400,6 +1400,18 @@ html, body {
 }
 #chatBox{display:flex;flex-direction:column;min-height:0;flex:1;}
 
+
+/* login-fields-force-visible */
+#loginPage #email,
+#loginPage #password{
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+  min-height:48px !important;
+  width:100% !important;
+}
+
 </style>
 </head>
 <body>
@@ -1434,9 +1446,9 @@ html, body {
         <p style="font-size:12px;color:#64748b;margin:8px 0 0;line-height:1.45" data-i18n="user_code_hint">پس از ثبت‌نام یک یوزرکد یکتا مثل @jcj98nn برای شما ساخته می‌شود.</p>
       </div>
       <label>ایمیل</label>
-      <input type="email" id="email" name="nava_login_email" placeholder="example@email.com" required autocomplete="username" inputmode="email">
+      <input type="email" id="email" placeholder="example@email.com" required autocomplete="username">
       <label>رمز عبور</label>
-      <input type="password" id="password" name="nava_login_password" placeholder="رمز عبور" required autocomplete="current-password">
+      <input type="password" id="password" placeholder="رمز عبور" required autocomplete="current-password">
       <div class="forgot-link" id="forgotLink"><span onclick="forgotPassword()">رمز عبور را فراموش کرده‌ام</span></div>
       <button class="login-btn" type="submit" id="authSubmitBtn">ورود</button>
     </form>
@@ -2821,101 +2833,52 @@ function bindHomeMenuSounds() {
 
 
 function disarmLoginAutofill() {
-  try {
-    const loginPage = document.getElementById("loginPage");
-    if (loginPage) {
-      loginPage.style.display = "none";
-      loginPage.setAttribute("inert", "");
-      loginPage.setAttribute("aria-hidden", "true");
-    }
-    // ALL password fields in the document trigger Chrome's bar — neutralize them while in-app
-    document.querySelectorAll('input[type="password"]').forEach((el) => {
-      try { el.blur(); } catch (e) {}
-      el.setAttribute("data-nava-was-password", "1");
-      el.type = "text"; // critical: type=password makes Chrome show the key bar
-      el.value = "";
-      el.readOnly = true;
-      el.disabled = true;
-      el.tabIndex = -1;
-      el.removeAttribute("name");
-      el.setAttribute("autocomplete", "off");
-      el.setAttribute("data-lpignore", "true");
-      el.setAttribute("data-1p-ignore", "true");
-      el.style.display = "none";
-    });
-    const email = document.getElementById("email");
-    if (email) {
-      try { email.blur(); } catch (e) {}
-      email.type = "text";
-      email.value = "";
-      email.readOnly = true;
-      email.disabled = true;
-      email.tabIndex = -1;
-      email.removeAttribute("name");
-      email.setAttribute("autocomplete", "off");
-      email.style.display = "none";
-    }
-    document.querySelectorAll("#loginPage input, #loginPage form").forEach((el) => {
-      el.setAttribute("autocomplete", "off");
-    });
-  } catch (e) {}
+  /* no-op: previous version hid password/email and broke login */
 }
 function armLoginAutofill() {
   try {
-    const loginPage = document.getElementById("loginPage");
-    if (loginPage) {
-      loginPage.removeAttribute("inert");
-      loginPage.removeAttribute("aria-hidden");
-    }
-    document.querySelectorAll('input[data-nava-was-password="1"]').forEach((el) => {
-      if (true) {
-        el.type = "password";
-        el.disabled = false;
-        el.readOnly = false;
-        el.tabIndex = 0;
-        el.style.display = "";
-        el.setAttribute("autocomplete", "current-password");
-      }
-    });
-    // restore by id (more reliable)
-    const pass = document.getElementById("password");
-    if (pass) {
-      pass.type = "password";
-      pass.disabled = false;
-      pass.readOnly = false;
-      pass.tabIndex = 0;
-      pass.style.display = "";
-      pass.name = "nava_login_password";
-      pass.setAttribute("autocomplete", "current-password");
-    }
-    const email = document.getElementById("email");
+    var email = document.getElementById("email");
+    var pass = document.getElementById("password");
     if (email) {
       email.type = "email";
       email.disabled = false;
       email.readOnly = false;
       email.tabIndex = 0;
       email.style.display = "";
-      email.name = "nava_login_email";
+      email.style.visibility = "visible";
+      email.style.opacity = "1";
+      email.removeAttribute("inert");
       email.setAttribute("autocomplete", "username");
     }
-    const np = document.getElementById("newPassword");
-    const cp = document.getElementById("confirmPassword");
-    [np, cp].forEach((el) => {
+    if (pass) {
+      pass.type = "password";
+      pass.disabled = false;
+      pass.readOnly = false;
+      pass.tabIndex = 0;
+      pass.style.display = "";
+      pass.style.visibility = "visible";
+      pass.style.opacity = "1";
+      pass.removeAttribute("inert");
+      pass.setAttribute("autocomplete", "current-password");
+    }
+    ["newPassword","confirmPassword","adminPinInput"].forEach(function(id){
+      var el = document.getElementById(id);
       if (!el) return;
       el.type = "password";
       el.disabled = false;
       el.readOnly = false;
+      el.tabIndex = 0;
       el.style.display = "";
+      el.style.visibility = "visible";
     });
-    const pin = document.getElementById("adminPinInput");
-    if (pin) {
-      pin.type = "password";
-      pin.disabled = false;
-      pin.readOnly = false;
-      pin.style.display = "";
+    var lp = document.getElementById("loginPage");
+    if (lp) {
+      lp.removeAttribute("inert");
+      lp.removeAttribute("aria-hidden");
     }
   } catch (e) {}
 }
+function guardChatInputFocus() {}
 
 
 function bindUiClickSounds() {
@@ -3138,22 +3101,24 @@ async function checkSession() {
 function showLogin() {
   stopMessagesRealtime();
   try { currentUserId = null; } catch (e) {}
-  [homePage, usersPage, friendRequestsPage, chatsPage, settingsPage].forEach(p => { if (p) p.style.display = "none"; });
+  try {
+    [homePage, usersPage, friendRequestsPage, chatsPage, settingsPage].forEach(function(p){ if (p) p.style.display = "none"; });
+  } catch (e) {}
   try { hideAllMainPages(); } catch (e) {}
-  const wp = document.getElementById("welcomePage");
+  var wp = document.getElementById("welcomePage");
   if (wp) { wp.classList.remove("show"); wp.style.display = "none"; }
-  const lp = document.getElementById("loginPage") || loginPage;
+  var lp = document.getElementById("loginPage");
+  if (!lp && typeof loginPage !== "undefined") lp = loginPage;
   if (lp) {
     lp.style.display = "flex";
     lp.style.visibility = "visible";
     lp.removeAttribute("inert");
     lp.removeAttribute("aria-hidden");
   }
-  try { armLoginAutofill(); } catch (e) {}
-  setTimeout(() => { try { armLoginAutofill(); } catch (e) {} }, 30);
-  setTimeout(() => { try { armLoginAutofill(); } catch (e) {} }, 200);
+  armLoginAutofill();
+  setTimeout(armLoginAutofill, 50);
+  setTimeout(armLoginAutofill, 250);
 }
-
 function needsWelcome(uid) {
   try { return localStorage.getItem("nava_pending_welcome_" + uid) === "1"; } catch (e) { return false; }
 }
