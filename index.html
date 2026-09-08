@@ -846,8 +846,39 @@ textarea:focus{border-color:#2563eb}
 .group-members-strip .discover-dot{position:relative}
 .admin-star-layer.group-stars .admin-star{filter:drop-shadow(0 0 5px rgba(255,255,255,.95))}
 
-#groupsPage,#createGroupPage,#groupChatPage{display:none;min-height:100vh;flex-direction:column}
-#groupsPage.is-open,#createGroupPage.is-open,#groupChatPage.is-open{display:flex}
+#groupsPage,#createGroupPage,#groupChatPage{display:none;flex-direction:column}
+#groupChatPage.is-open{
+  display:flex !important;
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  max-width:480px;margin:0 auto;
+  background:#fff;
+  z-index:50;
+  overflow:hidden;
+}
+#groupsPage.is-open,#createGroupPage.is-open{display:flex}
+#groupChatPage.is-open .group-chat-msg-area{
+  flex:1;min-height:0;overflow:hidden;position:relative;
+}
+#groupChatPage.is-open #groupChatMessages{
+  flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  position:relative;z-index:1;
+}
+#groupChatPage.is-open #groupChatComposer{
+  flex-shrink:0 !important;
+  position:relative !important;
+  z-index:30 !important;
+  background:#fff !important;
+  pointer-events:auto !important;
+}
+#groupChatPage.is-open #groupChatInput{
+  pointer-events:auto !important;
+  font-size:16px !important;
+}
+#groupChatPage.is-open .gpc-header,
+#groupChatPage.is-open .group-members-strip{
+  flex-shrink:0;
+}
 .group-list{display:flex;flex-direction:column;gap:8px;padding:4px 0}
 .group-card{
   display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
@@ -8469,6 +8500,13 @@ async function openGroupChat(groupId, groupName, createdBy) {
   try { closeChat(); } catch (e) {}
   const page = document.getElementById("groupChatPage");
   page.classList.add("is-open");
+  page.style.position = "";
+  page.style.top = "";
+  page.style.bottom = "";
+  page.style.height = "";
+  page.style.left = "";
+  page.style.right = "";
+
   page.style.display = "flex";
   page.style.flexDirection = "column";
   const title = document.getElementById("groupChatTitle");
